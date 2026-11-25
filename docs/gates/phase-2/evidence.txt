@@ -1,0 +1,8 @@
+== phase 2+3 evidence ==
+-- unit+security tests --
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+80 passed, 6 skipped, 20 warnings in 9.03s
+-- lint --
+All checks passed!
+-- schema.sql covers corrections --
+8

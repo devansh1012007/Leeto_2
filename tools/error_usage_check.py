@@ -7,7 +7,6 @@ Exit 1 on any violation.
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -17,15 +16,16 @@ ROOT = Path(__file__).resolve().parents[1]
 ERRORS = set(yaml.safe_load((ROOT / "openapi" / "errors.yaml").read_text())["codes"].keys())
 SPEC = json.loads((ROOT / "openapi" / "openapi.json").read_text())
 
+HTTP_METHODS = ("get", "post", "put", "delete", "patch")
+
+
 def main() -> int:
     used: dict[str, list[str]] = {}
-    unlisted: set[str] = set()
     for path, item in SPEC["paths"].items():
-        for method, op in item.items():
-            if method not in ("get", "post", "put", "delete", "patch"):
+        for method in item:
+            if method not in HTTP_METHODS:
                 continue
-            # codes appear in the operation description text (generator embeds them via err())
-            text = json.dumps(op.get("responses", {})) + op.get("description", "") + op.get("summary", "")
+            # codes are embedded in response descriptions by tools/gen_openapi.py err()
             blob = json.dumps(SPEC["paths"][path][method])
             for code in ERRORS:
                 if code in blob:
@@ -36,6 +36,7 @@ def main() -> int:
         print("  ORPHAN codes:", ", ".join(sorted(orphans)))
         return 1
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
