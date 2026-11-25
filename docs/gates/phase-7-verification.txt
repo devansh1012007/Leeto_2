@@ -1,0 +1,28 @@
+-- 1. python tests --
+132 passed, 6 skipped, 34 warnings in 9.60s
+-- 2. ruff --
+All checks passed!
+-- 3. openapi lint --
+openapi_lint: 94 operations checked, 0 errors
+-- 4. error usage --
+error_usage_check: 36/36 codes used by at least one endpoint
+-- 5. skill lint --
+skill_lint: 14 files checked, 0 errors
+-- 6. bundle check --
+bundle_check: PASS — no admin strings, no gt content, no secrets
+-- 7. view-as check --
+view_as_check: PASS — no impersonation route (R-28/E.4)
+-- 8. audit verifier --
+audit_verify: PASS (self-test)
+-- 9. escape suite --
+8 passed in 6.15s
+-- 10. TS client (cold start) --
+regen+build OK
+-- 11. participant build --
+✓ built in 868ms
+-- 12. admin build --
+✓ built in 833ms
+-- 13. FE unit tests --
+      Tests  10 passed (10)
+-- 14. no 423 --
+PASS
