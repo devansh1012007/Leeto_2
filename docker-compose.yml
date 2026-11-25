@@ -21,6 +21,14 @@ x-backend-base: &backend-base
   restart: unless-stopped
   networks: [bhctf]
 
+x-probe-healthcheck: &probe-healthcheck
+  # RB-01: "/readyz 200 on every API" — probes the service-local /healthz endpoint.
+  # Each service overrides `test` with its own port.
+  interval: 15s
+  timeout: 5s
+  retries: 10
+  start_period: 20s
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -57,6 +65,10 @@ services:
       ENV: ${ENV:-dev}
       RUNNER_MODE: ${RUNNER_MODE:-stub}
       AI_KIND: ${AI_KIND:-stub}
+      PROBE_PORT: "8000"
+    healthcheck:
+      <<: *probe-healthcheck
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).status == 200 else 1)\""]
 
   api_admin:
     <<: *backend-base
@@ -67,21 +79,43 @@ services:
     environment:
       ENV: ${ENV:-dev}
       ADMIN_AUTH_MODE: ${ADMIN_AUTH_MODE:-shared_secret}
+      PROBE_PORT: "8001"
+    healthcheck:
+      <<: *probe-healthcheck
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/healthz', timeout=3).status == 200 else 1)\""]
 
   worker_general:
     <<: *backend-base
     command: ["python", "-m", "app.main"]
     working_dir: /srv/apps/worker_general
+    expose: ["8012"]
+    environment:
+      PROBE_PORT: "8012"
+    healthcheck:
+      <<: *probe-healthcheck
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8012/healthz', timeout=3).status == 200 else 1)\""]
 
   worker_evaluator:
     <<: *backend-base
     command: ["python", "-m", "app.main"]
     working_dir: /srv/apps/worker_evaluator
+    expose: ["8011"]
+    environment:
+      PROBE_PORT: "8011"
+    healthcheck:
+      <<: *probe-healthcheck
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8011/healthz', timeout=3).status == 200 else 1)\""]
 
   scheduler:
     <<: *backend-base
     command: ["python", "-m", "app.main"]
     working_dir: /srv/apps/scheduler
+    expose: ["8010"]
+    environment:
+      PROBE_PORT: "8010"
+    healthcheck:
+      <<: *probe-healthcheck
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8010/healthz', timeout=3).status == 200 else 1)\""]
 
   runner_gateway:
     <<: *backend-base
@@ -89,6 +123,9 @@ services:
       uvicorn app.main:app --host 0.0.0.0 --port 8002
         --app-dir /srv/apps/runner_gateway
     expose: ["8002"]
+    healthcheck:
+      <<: *probe-healthcheck
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8002/healthz', timeout=3).status == 200 else 1)\""]
 
   runner:
     # DEV/STAGING ONLY (R-02/DV-02): same-host container; prod uses the separate runner-vm

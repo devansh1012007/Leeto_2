@@ -6,11 +6,13 @@ internal network only. Validates every result as untrusted data (RUN-05).
 from __future__ import annotations
 
 from core.errors import ApiError
+from core.health import register_health_endpoints
 from core.middleware import RequestContextMiddleware
 from fastapi import Depends, FastAPI, Header
 from runner.gateway import RunnerGateway, validate_job_result
 
 app = FastAPI(title="Runner Gateway", docs_url=None, redoc_url=None)
+register_health_endpoints(app)  # RB-01: /readyz 200 on every API
 app.add_middleware(RequestContextMiddleware)
 gw = RunnerGateway()
 

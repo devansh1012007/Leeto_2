@@ -12,6 +12,7 @@ import emergency.service as emergency_svc
 from auth import tokens as auth_tokens
 from core.config import ConfigError, get_settings
 from core.errors import ApiError, catalog_strings
+from core.health import register_health_endpoints
 from core.middleware import RequestContextMiddleware
 from fastapi import Depends, FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,6 +28,7 @@ except ConfigError as exc:
     raise
 
 app = FastAPI(title="Bug Hunt CTF — Admin API", version="1.0.0", docs_url=None, redoc_url=None)
+register_health_endpoints(app)  # RB-01: /readyz 200 on every API
 app.add_middleware(RequestContextMiddleware, body_limit_bytes=settings.body_limit_bytes)
 app.add_middleware(
     CORSMiddleware, allow_origins=settings.cors_allow_origins, allow_credentials=True,
