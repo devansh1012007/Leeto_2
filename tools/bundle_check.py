@@ -53,6 +53,6 @@ def view_as_check(admin_src: str = "frontend/apps/admin/src") -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 2 and sys.argv[1] == "view-as":
+    if len(sys.argv) >= 2 and sys.argv[1] == "view-as":
         sys.exit(view_as_check(sys.argv[2] if len(sys.argv) > 2 else "frontend/apps/admin/src"))
     sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "frontend/apps/participant/dist"))

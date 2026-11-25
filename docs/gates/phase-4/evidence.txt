@@ -7,6 +7,6 @@ index-DjWIMijU.js
 -- bundle check --
 bundle_check: PASS — no admin strings, no gt content, no secrets
 -- view-as check --
-bundle_check: PASS — no admin strings, no gt content, no secrets
+view_as_check: PASS — no impersonation route (R-28/E.4)
 -- FE tests --
       Tests  10 passed (10)
