@@ -1,0 +1,44 @@
+{
+  "type": "object",
+  "required": [
+    "id",
+    "state"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "finished",
+        "timed_out",
+        "killed",
+        "failed"
+      ]
+    },
+    "stdout_b64": {
+      "type": "string",
+      "description": "Capped; truncated flag set when over MAX_OUTPUT_BYTES"
+    },
+    "stderr_b64": {
+      "type": "string"
+    },
+    "exit_code": {
+      "type": "integer",
+      "nullable": true
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "queue_position": {
+      "type": "integer",
+      "description": "Present while queued (admission control, 02 \u00a710.5)"
+    }
+  },
+  "$id": "https://bhctf.local/schemas/run_state.v1.json",
+  "additionalProperties": false
+}

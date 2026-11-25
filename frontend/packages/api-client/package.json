@@ -1,0 +1,14 @@
+{
+  "name": "@bhctf/api-client",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "gen": "node ../../../tools/gen_ts_client.mjs",
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

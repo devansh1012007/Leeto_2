@@ -1,0 +1,49 @@
+{
+  "type": "object",
+  "required": [
+    "file",
+    "lines",
+    "explanation"
+  ],
+  "properties": {
+    "file": {
+      "type": "string",
+      "description": "Path within the team's repo option",
+      "example": "src/auth/session.py"
+    },
+    "lines": {
+      "type": "string",
+      "description": "Line range like '41-47' or '41'",
+      "example": "41-47"
+    },
+    "explanation": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Why this is a defect"
+    },
+    "related": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "category": {
+      "type": "string"
+    },
+    "runnable_ref": {
+      "type": "string",
+      "description": "Optional reference to scratch files for official runs"
+    }
+  },
+  "$id": "https://bhctf.local/schemas/flag_input.v1.json",
+  "additionalProperties": false
+}

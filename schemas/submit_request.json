@@ -1,0 +1,50 @@
+{
+  "description": "Discriminated union by kind (flags for levels 1-2, upload for levels 3-4).",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "kind",
+        "flags"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "flags"
+          ]
+        },
+        "flags": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 80,
+          "items": {
+            "$ref": "#/components/schemas/FlagInput"
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "kind",
+        "upload_id"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "upload"
+          ]
+        },
+        "upload_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Must have status=ok (or validation=deferred per B9)"
+        }
+      }
+    }
+  ],
+  "$id": "https://bhctf.local/schemas/submit_request.v1.json",
+  "additionalProperties": false
+}

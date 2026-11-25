@@ -1,0 +1,323 @@
+{
+  "type": "object",
+  "description": "state_shape_v1 (frozen, additive-only; see docs/CONTRACTS.md). ETag = sha256 of version tuple; server_time excluded from the ETag body.",
+  "required": [
+    "server_time",
+    "event",
+    "me",
+    "node_pointer",
+    "stages",
+    "team",
+    "versions",
+    "announcements",
+    "feature_flags"
+  ],
+  "properties": {
+    "server_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Always fresh; NOT part of the ETag body"
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "id",
+        "status",
+        "paused",
+        "tz"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "published",
+            "live",
+            "ended",
+            "archived"
+          ]
+        },
+        "paused": {
+          "type": "boolean"
+        },
+        "tz": {
+          "type": "string",
+          "example": "Asia/Kolkata"
+        },
+        "maintenance": {
+          "type": "boolean"
+        },
+        "safe_mode": {
+          "type": "boolean",
+          "description": "Safe Mode master switch (08 \u00a74.10)"
+        }
+      }
+    },
+    "me": {
+      "type": "object",
+      "required": [
+        "participant_id",
+        "role",
+        "consent_required"
+      ],
+      "properties": {
+        "participant_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "team_id": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true
+        },
+        "role": {
+          "type": "string"
+        },
+        "consent_required": {
+          "type": "boolean"
+        },
+        "min_client_version": {
+          "type": "string",
+          "example": "1.2.0"
+        }
+      }
+    },
+    "node_pointer": {
+      "type": "object",
+      "required": [
+        "node",
+        "sub_state",
+        "version"
+      ],
+      "properties": {
+        "node": {
+          "type": "string",
+          "enum": [
+            "LANDING",
+            "L1_EXPLAIN",
+            "L1_EXEC",
+            "L1_SUBMITTED",
+            "L2_EXPLAIN",
+            "L2_EXEC",
+            "L2_SUBMITTED",
+            "L3_EXPLAIN",
+            "L3_EXEC",
+            "L3_SUBMITTED",
+            "L4_EXPLAIN",
+            "L4_EXEC",
+            "L4_SUBMITTED",
+            "DONE"
+          ]
+        },
+        "sub_state": {
+          "type": "string",
+          "enum": [
+            "waiting_repo_lock",
+            "ready",
+            "active",
+            "submitting",
+            "evaluating",
+            "evaluated",
+            "adjusted"
+          ],
+          "description": "B11 sub-states"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "adjusted_by": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true,
+          "description": "Set when an organizer force-advanced (R-23)"
+        }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/StageBrief"
+      }
+    },
+    "team": {
+      "type": "object",
+      "required": [
+        "score",
+        "score_version",
+        "repo_choice"
+      ],
+      "properties": {
+        "score": {
+          "type": "number"
+        },
+        "score_version": {
+          "type": "integer"
+        },
+        "repo_choice": {
+          "type": "string",
+          "nullable": true
+        }
+      }
+    },
+    "versions": {
+      "type": "object",
+      "required": [
+        "progress_version",
+        "score_version",
+        "leaderboard_version",
+        "flags_version",
+        "announcement_version"
+      ],
+      "properties": {
+        "progress_version": {
+          "type": "integer"
+        },
+        "score_version": {
+          "type": "integer"
+        },
+        "leaderboard_version": {
+          "type": "integer"
+        },
+        "flags_version": {
+          "type": "integer"
+        },
+        "announcement_version": {
+          "type": "integer"
+        }
+      }
+    },
+    "announcements": {
+      "type": "array",
+      "description": "Latest 5; full list via GET /announcements",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "severity",
+          "body_md",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warn",
+              "critical"
+            ]
+          },
+          "body_md": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "feature_flags": {
+      "type": "object",
+      "required": [
+        "leaderboard",
+        "runner",
+        "ai",
+        "uploads",
+        "announcements",
+        "practice",
+        "read_only"
+      ],
+      "properties": {
+        "leaderboard": {
+          "type": "boolean"
+        },
+        "runner": {
+          "type": "boolean"
+        },
+        "ai": {
+          "type": "boolean"
+        },
+        "uploads": {
+          "type": "boolean"
+        },
+        "announcements": {
+          "type": "boolean"
+        },
+        "practice": {
+          "type": "boolean"
+        },
+        "read_only": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$id": "https://bhctf.local/schemas/state.v1.json",
+  "examples": [
+    {
+      "server_time": "2026-12-05T09:41:12.401Z",
+      "event": {
+        "id": "0f1e2d3c-4b5a-6978-8a97-6d5c4b3a2f10",
+        "status": "live",
+        "paused": false,
+        "tz": "Asia/Kolkata",
+        "maintenance": false,
+        "safe_mode": false
+      },
+      "me": {
+        "participant_id": "1a2b3c4d-5e6f-7890-abcd-ef0123456789",
+        "team_id": null,
+        "role": "participant",
+        "consent_required": false,
+        "min_client_version": "1.2.0"
+      },
+      "node_pointer": {
+        "node": "L2_EXEC",
+        "sub_state": "active",
+        "version": 7,
+        "adjusted_by": null
+      },
+      "stages": [
+        {
+          "stage_key": "level_2_flags",
+          "ordinal": 2,
+          "name": "Level 2 \u2014 Flag the bugs",
+          "kind": "flags",
+          "state": "open",
+          "submitted": false
+        }
+      ],
+      "team": {
+        "score": 0,
+        "score_version": 0,
+        "repo_choice": null
+      },
+      "versions": {
+        "progress_version": 7,
+        "score_version": 0,
+        "leaderboard_version": 3,
+        "flags_version": 1,
+        "announcement_version": 2
+      },
+      "announcements": [],
+      "feature_flags": {
+        "leaderboard": true,
+        "runner": true,
+        "ai": true,
+        "uploads": true,
+        "announcements": true,
+        "practice": true,
+        "read_only": false
+      }
+    }
+  ]
+}

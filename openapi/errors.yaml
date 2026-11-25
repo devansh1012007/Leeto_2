@@ -1,0 +1,163 @@
+# Canonical error catalog (B3). State conflicts are 409, never 423 (R-06).
+# Every endpoint lists every error it can return; no orphan codes.
+codes:
+  AUTH_INVALID_CREDENTIALS:
+    http: 401
+    message_key: error.AUTH_INVALID_CREDENTIALS
+    description: Credentials rejected.
+  AUTH_TOKEN_EXPIRED:
+    http: 401
+    message_key: error.AUTH_TOKEN_EXPIRED
+    description: Access token expired (client refreshes).
+  AUTH_SESSION_EXPIRED:
+    http: 401
+    message_key: error.AUTH_SESSION_EXPIRED
+    description: Refresh invalid or expired.
+  AUTH_SESSION_SUPERSEDED:
+    http: 401
+    message_key: error.AUTH_SESSION_SUPERSEDED
+    description: Another active session exists (D-19); details may carry a device hint.
+    details_schema:
+      device_hint: string
+  AUTH_FORBIDDEN:
+    http: 403
+    message_key: error.AUTH_FORBIDDEN
+    description: Role or ownership failure.
+  AUTH_CONSENT_REQUIRED:
+    http: 403
+    message_key: error.AUTH_CONSENT_REQUIRED
+    description: Rules/consent version not accepted.
+  AUTH_STEP_UP_REQUIRED:
+    http: 403
+    message_key: error.AUTH_STEP_UP_REQUIRED
+    description: Fresh re-authentication (step-up) needed.
+  AUTH_RATE_LIMITED:
+    http: 429
+    message_key: error.AUTH_RATE_LIMITED
+    description: Too many attempts; Retry-After header present.
+  STAGE_NOT_OPEN:
+    http: 409
+    message_key: error.STAGE_NOT_OPEN
+    description: Node or stage not yet open.
+  STAGE_PAUSED:
+    http: 409
+    message_key: error.STAGE_PAUSED
+    description: Stage paused; timer stopped.
+  STAGE_CLOSED:
+    http: 409
+    message_key: error.STAGE_CLOSED
+    description: Past deadline plus grace (replaces DEADLINE_PASSED).
+  GATE_BLOCKED:
+    http: 409
+    message_key: error.GATE_BLOCKED
+    description: Team not ready.
+    details_schema:
+      waiting_on: array<string>
+  ALREADY_SUBMITTED:
+    http: 409
+    message_key: error.ALREADY_SUBMITTED
+    description: Stage already submitted (distinct from an idempotent replay, which returns the original receipt).
+  REPO_ALREADY_LOCKED:
+    http: 409
+    message_key: error.REPO_ALREADY_LOCKED
+    description: Repo choice exists; response includes it.
+    details_schema:
+      repo_choice: string
+  DRAFT_VERSION_CONFLICT:
+    http: 409
+    message_key: error.DRAFT_VERSION_CONFLICT
+    description: Stale If-Match.
+    details_schema:
+      conflict: object
+  DRAFT_TOO_LARGE:
+    http: 413
+    message_key: error.DRAFT_TOO_LARGE
+    description: Over draft size cap.
+  SUBMISSION_INVALID:
+    http: 422
+    message_key: error.SUBMISSION_INVALID
+    description: Field-level details.
+    details_schema:
+      fields: array<object>
+  SUBMISSION_CAP_REACHED:
+    http: 429
+    message_key: error.SUBMISSION_CAP_REACHED
+    description: Flag or run cap reached.
+  UPLOAD_TOO_LARGE:
+    http: 413
+    message_key: error.UPLOAD_TOO_LARGE
+    description: Over size cap.
+  UPLOAD_TYPE_UNSUPPORTED:
+    http: 415
+    message_key: error.UPLOAD_TYPE_UNSUPPORTED
+    description: Not zip/diff/patch or magic mismatch.
+  UPLOAD_INVALID:
+    http: 422
+    message_key: error.UPLOAD_INVALID
+    description: Validation failed (paths, patch apply).
+  RUN_RATE_LIMITED:
+    http: 429
+    message_key: error.RUN_RATE_LIMITED
+    description: Run cap or concurrency reached; details.estimated_wait.
+    details_schema:
+      estimated_wait: string
+  RUN_COMMAND_UNKNOWN:
+    http: 422
+    message_key: error.RUN_COMMAND_UNKNOWN
+    description: command_id not allowed for the stage.
+  RUNNER_UNAVAILABLE:
+    http: 503
+    message_key: error.RUNNER_UNAVAILABLE
+    description: Runner off, killed or down.
+  VALIDATION_ERROR:
+    http: 422
+    message_key: error.VALIDATION_ERROR
+    description: Generic field errors.
+    details_schema:
+      fields: array<object>
+  IDEMPOTENCY_CONFLICT:
+    http: 409
+    message_key: error.IDEMPOTENCY_CONFLICT
+    description: Same key, different body.
+  CLIENT_TOO_OLD:
+    http: 426
+    message_key: error.CLIENT_TOO_OLD
+    description: Below minimum client version.
+  NOT_FOUND:
+    http: 404
+    message_key: error.NOT_FOUND
+    description: Missing or not visible.
+  PAYLOAD_TOO_LARGE:
+    http: 413
+    message_key: error.PAYLOAD_TOO_LARGE
+    description: Body over limit.
+  MAINTENANCE:
+    http: 503
+    message_key: error.MAINTENANCE
+    description: Kill switch, Safe Mode or maintenance.
+  UPSTREAM_UNAVAILABLE:
+    http: 503
+    message_key: error.UPSTREAM_UNAVAILABLE
+    description: DB or object store unavailable.
+  AP_OVERLAP_GT:
+    http: 409
+    message_key: error.AP_OVERLAP_GT
+    description: Answer Pack entry overlaps a ground-truth anchor (R-32/E.1).
+    details_schema:
+      overlapping_gt_entry_id: string
+  ESCALATION_REQUIRED:
+    http: 403
+    message_key: error.ESCALATION_REQUIRED
+    description: Emergency action needs a different second approver or missing rails.
+  EMERGENCY_RATE_LIMITED:
+    http: 429
+    message_key: error.EMERGENCY_RATE_LIMITED
+    description: More than 10 emergency actions per minute per event.
+  TIMING_GUARD:
+    http: 409
+    message_key: error.TIMING_GUARD
+    description: Action blocked in the last N minutes of a stage without emergency override.
+  INTERNAL:
+    http: 500
+    message_key: error.INTERNAL
+    description: Unexpected.

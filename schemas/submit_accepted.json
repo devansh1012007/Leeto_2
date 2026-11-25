@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "required": [
+    "receipt_id",
+    "accepted_at"
+  ],
+  "properties": {
+    "receipt_id": {
+      "type": "string",
+      "description": "Short receipt code (HMAC-derived)",
+      "example": "K7QD-92MX"
+    },
+    "accepted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "clock_timestamp() captured after the stage-state lock (B6)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "received"
+      ]
+    }
+  },
+  "$id": "https://bhctf.local/schemas/submit_accepted.v1.json",
+  "additionalProperties": false
+}

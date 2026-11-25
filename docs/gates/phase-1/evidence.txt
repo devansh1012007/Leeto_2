@@ -1,0 +1,5 @@
+openapi_lint: 94 operations checked, 0 errors
+error_usage_check: 36/36 codes used by at least one endpoint
+skill_lint: 14 files checked, 0 errors
+--- cold start ---
+regenerated client, tsc strict build exit 0

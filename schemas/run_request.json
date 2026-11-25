@@ -1,0 +1,61 @@
+{
+  "type": "object",
+  "required": [
+    "stage_key",
+    "command_id",
+    "workspace"
+  ],
+  "properties": {
+    "stage_key": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]{3,32}$"
+    },
+    "command_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{2,32}$",
+      "description": "Must be in the stage's run_commands allow-list; fixed argv lives server-side (R-08/B9)",
+      "example": "test"
+    },
+    "workspace": {
+      "description": "Server draft reference, or a small inline delta",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "draft_version"
+          ],
+          "properties": {
+            "draft_version": {
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "delta"
+          ],
+          "properties": {
+            "delta": {
+              "type": "string",
+              "maxLength": 262144,
+              "description": "\u2264 256 KB inline delta"
+            }
+          }
+        }
+      ]
+    },
+    "stdin": {
+      "type": "string",
+      "maxLength": 65536,
+      "description": "Optional base64 stdin"
+    },
+    "practice": {
+      "type": "boolean",
+      "default": false,
+      "description": "Practice namespace; hidden inputs unreachable (06 \u00a75)"
+    }
+  },
+  "$id": "https://bhctf.local/schemas/run_request.v1.json",
+  "additionalProperties": false
+}

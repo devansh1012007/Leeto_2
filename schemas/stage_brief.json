@@ -1,0 +1,79 @@
+{
+  "type": "object",
+  "required": [
+    "stage_key",
+    "ordinal",
+    "name",
+    "kind",
+    "state",
+    "submitted"
+  ],
+  "properties": {
+    "stage_key": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]{3,32}$",
+      "description": "Stable slug identity (R-18)",
+      "example": "level_2_flags"
+    },
+    "ordinal": {
+      "type": "integer",
+      "description": "Informational order only"
+    },
+    "name": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "explain_only",
+        "flags",
+        "upload"
+      ]
+    },
+    "explain_opens_at": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "exec_opens_at": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "exec_closes_at": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "locked",
+        "open",
+        "closed"
+      ]
+    },
+    "paused": {
+      "type": "boolean"
+    },
+    "submitted": {
+      "type": "boolean"
+    },
+    "gate": {
+      "type": "object",
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "waiting_on": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$id": "https://bhctf.local/schemas/stage_brief.v1.json"
+}

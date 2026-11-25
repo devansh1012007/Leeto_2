@@ -1,0 +1,38 @@
+{
+  "type": "object",
+  "required": [
+    "id",
+    "status"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "stored",
+        "validating",
+        "ok",
+        "failed"
+      ],
+      "description": "stored \u2192 validating \u2192 ok | failed (frozen lifecycle)"
+    },
+    "sha256": {
+      "type": "string"
+    },
+    "size": {
+      "type": "integer"
+    },
+    "problems": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Present when failed (validation ran on the runner, never the API host)"
+    }
+  },
+  "$id": "https://bhctf.local/schemas/upload.v1.json",
+  "additionalProperties": false
+}

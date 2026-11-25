@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "required": [
+    "payload"
+  ],
+  "properties": {
+    "payload": {
+      "type": "object",
+      "description": "Workspace state; \u2264 512 KB serialized (else 413 DRAFT_TOO_LARGE)"
+    }
+  },
+  "$id": "https://bhctf.local/schemas/draft_put.v1.json",
+  "additionalProperties": false
+}

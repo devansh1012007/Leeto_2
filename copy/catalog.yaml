@@ -1,0 +1,242 @@
+# Copy catalog (T-1.3): every user-visible string gets a key.
+# Admin preview strings use the admin.preview.* prefix so A6 renders participant-side
+# strings from this same catalog. version bumps wake A5/A6.
+version: 1
+
+strings:
+  # ---- global
+  app.name: "Bug Hunt CTF"
+  app.tagline: "Find bugs. Prove them. Get scored."
+  common.loading: "Loading…"
+  common.empty: "Nothing here yet."
+  common.error: "Something went wrong."
+  common.error_copy_details: "Copy details"
+  common.retry: "Retry"
+  common.cancel: "Cancel"
+  common.confirm: "Confirm"
+  common.back: "Back"
+  common.next: "Next"
+  common.offline: "You are offline"
+  common.request_id: "Request ID"
+  common.server_time: "Server time"
+
+  # ---- sync chip (T-5.4, five states)
+  sync.saved_locally: "Saved locally"
+  sync.saved_to_server: "Saved to server"
+  sync.offline_kept: "Offline: changes kept on this device"
+  sync.submit_queued: "Submit queued, not accepted yet"
+  sync.submission_accepted: "Submission accepted"
+
+  # ---- boot (T-5.1)
+  boot.config_fallback: "Using default settings"
+  boot.clock_warn: "Clock could not be synced; times shown may drift"
+  boot.client_too_old: "Your app version is too old. Please reload to continue."
+  boot.client_too_old_info: "Informational pages still work; the workspace is blocked until reload."
+
+  # ---- auth
+  auth.sign_in: "Sign in"
+  auth.sign_out: "Sign out"
+  auth.identifier: "Email or username"
+  auth.password: "Password"
+  auth.invalid_credentials: "Email or password is incorrect"
+  auth.session_superseded: "You signed in on another device; this session was closed."
+  auth.rate_limited: "Too many attempts. Try again in {retry_after}s."
+  auth.account_disabled: "This account is disabled. Contact the organizers."
+
+  # ---- consent
+  consent.title: "Rules & consent"
+  consent.required: "Please accept the current rules to continue"
+  consent.accept_rules: "I have read and accept the rules"
+  consent.accept_privacy: "I have read and accept the privacy notice"
+
+  # ---- lobby
+  lobby.countdown: "Starts in"
+  lobby.enter_workspace: "Enter workspace"
+  lobby.ready_waiting: "Ready — waiting for start"
+  lobby.bundle_prefetching: "Preparing challenge files… {percent}%"
+  lobby.system_check: "System check"
+  lobby.tour: "Workspace tour"
+
+  # ---- workspace
+  ws.hud.countdown: "Time left"
+  ws.hud.reports_acknowledged: "Reports acknowledged"
+  ws.pause_banner: "Round paused — the countdown is frozen"
+  ws.readonly_banner: "This round is read-only"
+  ws.explorer.title: "Files"
+  ws.report.title: "Report a bug"
+  ws.report.target_file: "Target file"
+  ws.report.line_range: "Line range"
+  ws.report.category: "Category"
+  ws.report.title_field: "Title"
+  ws.report.description: "Description"
+  ws.report.description_helper: "Explain the defect and why it is wrong (40–2000 chars)"
+  ws.report.impact: "Impact (optional)"
+  ws.report.evidence: "Reproduction / evidence"
+  ws.report.suggested_fix: "Suggested fix (optional)"
+  ws.report.submit: "Submit report"
+  ws.report.caps: "Reports left for this file: {n}"
+  ws.report.already_reported_area: "You already reported this area"
+  ws.report.span_too_wide: "Line span exceeds the maximum ({max})"
+  ws.submissions.title: "My submissions"
+  ws.submissions.status.queued: "Queued"
+  ws.submissions.status.received: "Received"
+  ws.submissions.status.accepted: "Accepted"
+  ws.submissions.status.partial: "Partially accepted"
+  ws.submissions.status.duplicate: "Duplicate"
+  ws.submissions.status.rejected: "Not accepted"
+  ws.submissions.status.under_review: "Under review"
+  ws.run.title: "Run panel"
+  ws.run.preview_notice: "This run is a preview. Scoring uses a separate official run."
+  ws.run.rate_limited: "Run limit reached. Retry in {retry_after}s."
+  ws.run.runner_unavailable: "The runner is temporarily unavailable. Your reports are unaffected."
+  ws.end_of_round: "Time is up"
+  ws.end_of_round_summary: "{n} report(s) acknowledged. You can safely close this page."
+
+  # ---- auto-submit (T-5.6)
+  autosubmit.warn_5m: "5 minutes left — review your drafts"
+  autosubmit.warn_3m: "3 minutes left"
+  autosubmit.warn_1m: "1 minute left — submit now"
+  autosubmit.modal_title: "Time is up — submitting your work"
+  autosubmit.flushing: "Sending your saved work…"
+  autosubmit.waiting_server: "Waiting for the server to confirm…"
+  autosubmit.timeout_help: "Your work may still have been received. Keep this page open; reference {request_id} if you contact support. It is now safe to close this page."
+
+  # ---- drafts / conflicts (T-5.5)
+  drafts.conflict_title: "Your draft changed on another device"
+  drafts.conflict_keep_mine: "Keep mine"
+  drafts.conflict_use_server: "Use server version"
+  drafts.conflict_compare: "Compare"
+  drafts.conflict_keep_mine_confirm: "Overwrite the server version with your local changes?"
+  drafts.restored: "Restored your latest work (saved {seconds}s ago)"
+
+  # ---- offline (T-5.8)
+  offline.banner: "Offline — changes are kept on this device"
+  offline.flushing: "Sending queued changes…"
+
+  # ---- repo lock
+  repolock.title: "Choose your repository"
+  repolock.confirm_wait: "This choice is permanent for the event"
+  repolock.already_locked: "Your team already chose {option}"
+  repolock.adjusted: "Adjusted by organizer"
+
+  # ---- leaderboard / results
+  leaderboard.title: "Leaderboard"
+  leaderboard.hidden: "Hidden until results are published"
+  leaderboard.frozen: "Frozen — updates at intervals"
+  leaderboard.provisional: "provisional"
+  results.title: "Your results"
+  results.component.ai: "AI assessment"
+  results.component.output: "Output tests"
+  results.component.manual: "Reviewer decision"
+
+  # ---- errors (error.<code> for every code in errors.yaml)
+  error.AUTH_INVALID_CREDENTIALS: "Email or password is incorrect."
+  error.AUTH_TOKEN_EXPIRED: "Your session timed out. Refreshing…"
+  error.AUTH_SESSION_EXPIRED: "Please sign in again."
+  error.AUTH_SESSION_SUPERSEDED: "You signed in on another device; this session was closed."
+  error.AUTH_FORBIDDEN: "You do not have access to this."
+  error.AUTH_CONSENT_REQUIRED: "Please accept the current rules first."
+  error.AUTH_STEP_UP_REQUIRED: "For safety, please re-authenticate to continue."
+  error.AUTH_RATE_LIMITED: "Too many requests. Try again in {retry_after}s."
+  error.STAGE_NOT_OPEN: "This level is not open yet."
+  error.STAGE_PAUSED: "The round is paused; the timer is stopped."
+  error.STAGE_CLOSED: "The deadline for this level has passed."
+  error.GATE_BLOCKED: "Your team is not ready: {waiting_on}"
+  error.ALREADY_SUBMITTED: "This level was already submitted."
+  error.REPO_ALREADY_LOCKED: "Your team already chose a repository: {repo_choice}"
+  error.DRAFT_VERSION_CONFLICT: "Your draft changed on another device."
+  error.DRAFT_TOO_LARGE: "Your draft is too large to save."
+  error.SUBMISSION_INVALID: "Some fields need attention before submitting."
+  error.SUBMISSION_CAP_REACHED: "You reached the submission cap for this level."
+  error.UPLOAD_TOO_LARGE: "The file is too large."
+  error.UPLOAD_TYPE_UNSUPPORTED: "Only .zip, .diff or .patch files are accepted."
+  error.UPLOAD_INVALID: "The file failed validation: {problems}"
+  error.RUN_RATE_LIMITED: "Run limit reached. Estimated wait: {estimated_wait}."
+  error.RUN_COMMAND_UNKNOWN: "This command is not available for the level."
+  error.RUNNER_UNAVAILABLE: "The runner is temporarily unavailable."
+  error.VALIDATION_ERROR: "Some fields need attention."
+  error.IDEMPOTENCY_CONFLICT: "This request was already sent with different content."
+  error.CLIENT_TOO_OLD: "Your app version is too old. Please reload."
+  error.NOT_FOUND: "Not found."
+  error.PAYLOAD_TOO_LARGE: "The request is too large."
+  error.MAINTENANCE: "This feature is temporarily disabled."
+  error.UPSTREAM_UNAVAILABLE: "The platform is having trouble. Your drafts are safe."
+  error.AP_OVERLAP_GT: "This entry overlaps an existing answer."
+  error.ESCALATION_REQUIRED: "This action needs a second, different approver."
+  error.EMERGENCY_RATE_LIMITED: "Too many emergency actions this minute."
+  error.TIMING_GUARD: "This action is blocked in the final minutes of a stage."
+  error.INTERNAL: "Something went wrong. Quote {request_id} to support."
+
+  # ---- feature disabled (kill switches)
+  feature_disabled.leaderboard: "The leaderboard is temporarily hidden."
+  feature_disabled.runner: "Code runs are temporarily disabled."
+  feature_disabled.ai: "AI assessment is temporarily disabled; reports are unaffected."
+  feature_disabled.uploads: "Uploads are temporarily disabled."
+  feature_disabled.announcements: "Announcements are temporarily disabled."
+  feature_disabled.practice: "The practice area is closed."
+  feature_disabled.read_only: "The platform is in read-only mode."
+  feature_disabled.admission_control: "New sign-ins are temporarily paused."
+
+  # ---- warnings (warn.deadline.5m etc.)
+  warn.deadline.5m: "5 minutes left"
+  warn.deadline.3m: "3 minutes left"
+  warn.deadline.1m: "1 minute left"
+
+  # ---- placeholders (placeholder.flag.N)
+  placeholder.flag.1: "e.g. src/auth/session.py:41-47"
+  placeholder.flag.2: "What is wrong, and why is it wrong?"
+  placeholder.flag.3: "Steps or call path that demonstrates the issue"
+
+  # ---- receipts
+  receipt.title: "Receipt"
+  receipt.received: "Received"
+  receipt.verdict_pending: "Verdicts are published after the round ends"
+  receipt.copy: "Copy receipt code"
+
+  # ---- correction protocol announcement (A12: must not reveal location)
+  correction.unplanned.accepted: "An additional issue in this level was reviewed and accepted as valid. Scoring has been updated for all affected reports. {count} issue(s) were added."
+
+  # ---- admin.preview.* (E.4: A6 renders participant-side strings from this catalog)
+  admin.preview.pause.banner: "Round paused — the countdown is frozen"
+  admin.preview.resume.toast: "The round resumed; the countdown continues"
+  admin.preview.extend.toast: "Deadline extended by {minutes} min"
+  admin.preview.advance.toast: "Organizer advanced your team"
+  admin.preview.force_submit.toast: "Your level was submitted by the organizer"
+  admin.preview.quarantine.banner: "Under review — work continues, submissions held"
+  admin.preview.safe_mode.banner: "The platform is in Safe Mode; edits are kept on your device"
+  admin.preview.logout_all.banner: "Please sign in again"
+  admin.preview.announcement.banner: "Organizer announcement: {body}"
+
+  # ---- emergency participant copy (from catalog only, never free text — 08 §4.12 rail 6)
+  emergency.copy.pause: "The event is paused. The clock is stopped. Please wait for the resume announcement."
+  emergency.copy.extend: "The deadline for this level was extended by {minutes} minutes."
+  emergency.copy.safe_mode: "The platform is operating in Safe Mode. Your work is saved locally and will sync when normal operation resumes."
+  emergency.copy.restore: "Scores were corrected after a platform issue. Check your results page for the updated breakdown."
+
+  # ---- practice
+  practice.title: "Practice"
+  practice.feedback_note: "Practice uses immediate feedback — competition rounds do not."
+  practice.reset: "Reset practice state"
+
+  # ---- accessibility
+  a11y.countdown_role: "timer"
+  a11y.skip_to_content: "Skip to content"
+  a11y.shortcuts_help: "Keyboard shortcuts"
+
+  # ---- admin shell (A6)
+  admin.env.dev: "LOCAL"
+  admin.env.staging: "STAGING"
+  admin.env.prod: "PRODUCTION"
+  admin.sensitive_banner: "Sensitive — access logged"
+  admin.frozen_banner: "Ground truth is frozen. Corrections require a rescore release."
+  admin.emergency_room_banner: "EMERGENCY CONTROL ROOM — actions are audited"
+  admin.confirm.type_numeral: "Type 7 to confirm"
+  admin.confirm.type_rescore: "Type RESCORE to confirm"
+  admin.two_approver_self_block: "The second approver must be a different user"
+  admin.last_refresh: "Last refreshed {seconds}s ago"
+  admin.stale: "Not updating"
+  admin.degraded: "Degraded — retrying"
+  admin.undo_available: "Undo available for 60 s"
+  admin.no_undo: "No undo"
+  admin.dry_run: "Dry run"
+  admin.incident_banner: "Incident {severity}: {summary} — commander: {commander}"

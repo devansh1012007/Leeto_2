@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "required": [
+    "request_id",
+    "server_time"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "description": "Correlation id",
+      "example": "req_01J8ZK3M2P"
+    },
+    "server_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Authoritative server time (UTC)",
+      "example": "2026-12-05T09:41:12.401Z"
+    }
+  },
+  "additionalProperties": false,
+  "$id": "https://bhctf.local/schemas/meta.v1.json"
+}

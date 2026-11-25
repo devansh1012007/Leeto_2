@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "required": [
+    "error"
+  ],
+  "properties": {
+    "error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message",
+        "request_id"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Stable error code from openapi/errors.yaml"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable, safe to display (copy-catalog key resolved)"
+        },
+        "details": {
+          "type": "object",
+          "description": "Structured details per error code (e.g. waiting_on[], repo_choice, conflict)"
+        },
+        "request_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$id": "https://bhctf.local/schemas/error_envelope.v1.json"
+}
