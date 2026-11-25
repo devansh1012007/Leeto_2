@@ -14,6 +14,8 @@ from core.config import get_settings
 from core.errors import ApiError
 from core.middleware import RequestContextMiddleware
 from db.session import tx
+
+# payload_hash reserved for idempotency body hashing on the DB path
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -199,13 +201,18 @@ async def submit(stage_key: str, body: SubmitBody, user: dict = Depends(current_
     payload = {"kind": body.kind,
                "flags": [f.model_dump() for f in (body.flags or [])],
                "upload_id": body.upload_id}
-    async with tx() as conn:
-        outcome = await submit_stage(
-            conn, participant_id=user["sub"], team_id=None,
-            event_id="00000000-0000-0000-0000-000000000001",
-            stage_key=stage_key, kind=body.kind, body=payload,
-            idempotency_key=idempotency_key,
-        )
+    try:
+        async with tx() as conn:
+            outcome = await submit_stage(
+                conn, participant_id=user["sub"], team_id=None,
+                event_id="00000000-0000-0000-0000-000000000001",
+                stage_key=stage_key, kind=body.kind, body=payload,
+                idempotency_key=idempotency_key,
+            )
+    except ApiError:
+        raise
+    except Exception:  # noqa: BLE001 — DB unreachable: 503 UPSTREAM_UNAVAILABLE, never 500 (02 §12)
+        raise ApiError("UPSTREAM_UNAVAILABLE") from None
     return _env({"receipt_id": outcome.receipt_id, "accepted_at": outcome.accepted_at,
                  "status": "received", "replay": outcome.replay})
 

@@ -28,7 +28,7 @@ def main(dist: str) -> int:
             continue
         text = f.read_text(errors="ignore")
         for pat in FORBIDDEN:
-            if re.search(pat, text, re.I):
+            if re.search(pat, text, re.IGNORECASE):
                 hits.append((f, pat))
     if hits:
         print(f"bundle_check: FAIL — {len(hits)} forbidden pattern(s) in participant build")

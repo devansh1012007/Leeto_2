@@ -1,0 +1,125 @@
+# Bug Hunt CTF — full stack (D0/D1 single host)
+#
+# Profiles:
+#   docker compose up -d                       # core: postgres + caddy + apis + workers
+#   docker compose --profile runner up -d      # + runner (dev/staging ONLY, no real data — R-02)
+#   RUNNER_MODE is refused as 'stub' in prod by the runner service boot guard.
+#
+# Corrections applied: B5 (topology table — no published host ports in prod; Caddy is the
+# only edge), R-02/DV-02 (runner same-host only in dev/staging), R-13 (backups off-host).
+
+name: bhctf
+
+x-backend-base: &backend-base
+  build:
+    context: ./backend
+    target: runtime
+  env_file: .env
+  depends_on:
+    postgres:
+      condition: service_healthy
+  restart: unless-stopped
+  networks: [bhctf]
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${PG_DB:-bhctf}
+      POSTGRES_USER: ${PG_USER:-postgres}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-bhctf-dev}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/migrations/schema.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-postgres} -d ${PG_DB:-bhctf}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    # never on a public interface (B5); compose network only
+    networks: [bhctf]
+
+  migrate:
+    <<: *backend-base
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api_participant:
+    <<: *backend-base
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000
+        --app-dir /srv/apps/api_participant
+    expose: ["8000"]
+    environment:
+      ENV: ${ENV:-dev}
+      RUNNER_MODE: ${RUNNER_MODE:-stub}
+      AI_KIND: ${AI_KIND:-stub}
+
+  api_admin:
+    <<: *backend-base
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8001
+        --app-dir /srv/apps/api_admin
+    expose: ["8001"]
+    environment:
+      ENV: ${ENV:-dev}
+      ADMIN_AUTH_MODE: ${ADMIN_AUTH_MODE:-shared_secret}
+
+  worker_general:
+    <<: *backend-base
+    command: ["python", "-m", "app.main"]
+    working_dir: /srv/apps/worker_general
+
+  worker_evaluator:
+    <<: *backend-base
+    command: ["python", "-m", "app.main"]
+    working_dir: /srv/apps/worker_evaluator
+
+  scheduler:
+    <<: *backend-base
+    command: ["python", "-m", "app.main"]
+    working_dir: /srv/apps/scheduler
+
+  runner_gateway:
+    <<: *backend-base
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8002
+        --app-dir /srv/apps/runner_gateway
+    expose: ["8002"]
+
+  runner:
+    # DEV/STAGING ONLY (R-02/DV-02): same-host container; prod uses the separate runner-vm
+    # profile or RUNNER_MODE=off. The runner has no DB credentials and no secrets.
+    profiles: ["runner"]
+    build:
+      context: ./runner
+    environment:
+      ENV: ${ENV:-dev}
+      RUNNER_MODE: real
+      GATEWAY_URL: http://runner_gateway:8002
+      RUNNER_TOKEN: ${RUNNER_TOKEN:-dev-runner-token-change-me}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: ["ALL"]
+    networks: [bhctf]
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "${HTTP_PORT:-80}:80"      # dev only; prod routes via Cloudflare Tunnel, no published ports
+    volumes:
+      - ./ops/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frontend/apps/participant/dist:/srv/participant:ro
+      - ./frontend/apps/admin/dist:/srv/admin:ro
+    depends_on: [api_participant, api_admin]
+    networks: [bhctf]
+
+volumes:
+  pgdata:
+
+networks:
+  bhctf:
+    driver: bridge

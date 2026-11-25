@@ -1,0 +1,11 @@
+== phase 5+6 evidence ==
+-- full test suite --
+92 passed, 6 skipped, 28 warnings in 9.26s
+-- escape suite --
+8 passed in 6.16s
+-- lint --
+All checks passed!
+-- audit verifier self-test --
+audit_verify: PASS (self-test)
+-- runbooks --
+13

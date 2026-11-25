@@ -1,0 +1,6 @@
+# Pinned image digests (T-11.3). CI compares on every deploy; drift fails the deploy.
+# Fill digests after the first prod build; the versions below are the pinned tags.
+postgres: postgres:16-alpine
+caddy: caddy:2-alpine
+backend: bhctf/backend:1.0.0
+runner: bhctf/runner:1.0.0
