@@ -43,6 +43,15 @@ async def test_healthz_ok(clients, service):
 
 
 @pytest.mark.parametrize("service", SERVICES)
+async def test_metrics_prometheus_text(clients, service):
+    r = await clients[service].get("/metrics")
+    assert r.status_code == 200
+    assert "text/plain" in r.headers["content-type"]
+    assert "bhctf_up 1" in r.text
+    assert "bhctf_uptime_seconds" in r.text
+
+
+@pytest.mark.parametrize("service", SERVICES)
 async def test_readyz_fail_closed_without_db(clients, service):
     r = await clients[service].get("/readyz")
     # no Postgres in this environment: must fail closed (503), never a lying 200

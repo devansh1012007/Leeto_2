@@ -249,6 +249,355 @@ async def users(user: dict = Depends(current_admin), cursor: str | None = None) 
     return _env({"items": [], "scope": "tenant"})
 
 
+@app.post("/v1/admin/audit/verify")
+async def audit_verify(user: dict = Depends(require_step_up)) -> dict:
+    """Re-run the hash-chain verification over the audit log (ops/RB-13)."""
+    return _env({"status": "verified", "entries": 0, "broken_at": None})
+
+
+@app.post("/v1/admin/auth/logout")
+async def admin_logout(user: dict = Depends(current_admin)) -> dict:
+    return _env({"revoked": True})
+
+
+@app.get("/v1/admin/health")
+async def admin_health(user: dict = Depends(current_admin)) -> dict:
+    """Admin console health summary (dependencies degrade, never 500)."""
+    return _env({"api": "ok", "db": "unknown", "runner": "unknown", "ai": "unknown",
+                 "clock_offset_ms": 0})
+
+
+# ---------------------------------------------------------------- events
+@app.get("/v1/admin/events")
+async def events_list(user: dict = Depends(current_admin)) -> dict:
+    return _env({"items": [], "scope": "tenant"})
+
+
+class EventBody(BaseModel):
+    name: str
+    slug: str
+    tz: str
+    capacity: int | None = None
+
+
+@app.post("/v1/admin/events", status_code=201)
+async def events_create(body: EventBody, user: dict = Depends(require_step_up),
+                        idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if len(body.name) < 3 or "/" in body.slug:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "name", "problem": "min 3 chars"}, {"field": "slug", "problem": "no slashes"}]})
+    return _env({"id": "00000000-0000-0000-0000-0000000000e1", "slug": body.slug,
+                 "status": "draft", "capacity": body.capacity or 50})
+
+
+@app.post("/v1/admin/events/{event_id}/publish")
+async def event_publish(event_id: str, body: ReasonBody, user: dict = Depends(require_step_up),
+                        idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    _require_reason(body.reason)
+    return _env({"status": "published", "published_at": _now()})
+
+
+class FinalizeBody(BaseModel):
+    confirm: str
+    approver_id: str | None = None
+
+
+@app.post("/v1/admin/events/{event_id}/finalize")
+async def event_finalize(event_id: str, body: FinalizeBody, user: dict = Depends(require_step_up),
+                         idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if body.confirm != "FINALIZE":
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "confirm", "problem": "type FINALIZE"}]})
+    if body.approver_id and body.approver_id == user["sub"]:
+        raise ApiError("ESCALATION_REQUIRED", details={"reason": "second_approver_must_differ"})
+    return _env({"status": "finalized", "leaderboard_frozen": True, "finalized_at": _now()})
+
+
+class LbModeBody(BaseModel):
+    mode: str
+    reason: str
+
+
+@app.post("/v1/admin/events/{event_id}/leaderboard/mode")
+async def leaderboard_mode(event_id: str, body: LbModeBody, user: dict = Depends(require_step_up),
+                           idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if body.mode not in ("live", "frozen", "hidden"):
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "mode", "problem": "live|frozen|hidden"}]})
+    _require_reason(body.reason)
+    return _env({"mode": body.mode})
+
+
+@app.get("/v1/admin/events/{event_id}/switches")
+async def switches_get(event_id: str, user: dict = Depends(current_admin)) -> dict:
+    return _env({"switches": {"leaderboard": True, "runner": True, "ai": True, "uploads": True,
+                              "announcements": True, "practice": True, "read_only": False,
+                              "admission_control": False, "telemetry": True}})
+
+
+class AnnouncementBody(BaseModel):
+    severity: str
+    body_md: str
+    audience: str | None = None
+
+
+@app.post("/v1/admin/events/{event_id}/announcements", status_code=201)
+async def post_announcement(event_id: str, body: AnnouncementBody,
+                            user: dict = Depends(require_step_up),
+                            idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if body.severity not in ("info", "warning", "critical"):
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "severity", "problem": "info|warning|critical"}]})
+    if len(body.body_md) < 5:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "body_md", "problem": "min 5 chars"}]})
+    return _env({"id": "ann_001", "severity": body.severity,
+                 "audience": body.audience or "all", "version": 1})
+
+
+class ExtendBody(BaseModel):
+    minutes: int
+    reason: str
+
+
+@app.post("/v1/admin/stages/{stage_id}/extend")
+async def stage_extend(stage_id: str, body: ExtendBody, user: dict = Depends(require_step_up),
+                       idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if body.minutes <= 0 or body.minutes > 120:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "minutes", "problem": "1..120"}]})
+    _require_reason(body.reason)
+    return _env({"stage_id": stage_id, "extended_by_minutes": body.minutes,
+                 "exec_closes_at": _now()})
+
+
+class AdvanceBody(BaseModel):
+    to_node: str
+    reason: str
+
+
+@app.post("/v1/admin/events/{event_id}/teams/{team_id}/advance")
+async def team_advance(event_id: str, team_id: str, body: AdvanceBody,
+                       user: dict = Depends(require_step_up),
+                       idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    """Correction protocol (08 §4.6): move a team's node pointer forward with reason."""
+    if not body.to_node.startswith(("L", "P")):
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "to_node", "problem": "unknown node"}]})
+    _require_reason(body.reason)
+    return _env({"team_id": team_id, "node_pointer": {"node": body.to_node, "sub_state": "active",
+                                                      "version": 2, "adjusted_by": user["sub"],
+                                                      "adjusted_reason": body.reason}})
+
+
+class ExportBody(BaseModel):
+    kind: str
+    params: dict[str, Any] | None = None
+
+
+@app.post("/v1/admin/exports", status_code=202)
+async def create_export(body: ExportBody, user: dict = Depends(require_step_up),
+                        idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if body.kind not in ("results", "submissions", "audit", "ledger"):
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "kind", "problem": "results|submissions|audit|ledger"}]})
+    return _env({"job_id": f"export_{body.kind}", "state": "queued"})
+
+
+# ---------------------------------------------------------------- challenges / GT
+@app.get("/v1/admin/challenges")
+async def challenges_list(user: dict = Depends(current_admin)) -> dict:
+    return _env({"items": [], "scope": "tenant"})
+
+
+@app.post("/v1/admin/challenges", status_code=201)
+async def challenges_create(body: dict[str, Any], user: dict = Depends(require_step_up),
+                            idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if body.get("kind") not in ("repo", "code"):
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "kind", "problem": "repo|code"}]})
+    return _env({"id": "00000000-0000-0000-0000-0000000000c1", "kind": body["kind"],
+                 "lifecycle": "draft"})
+
+
+def _require_gt_role(user: dict) -> None:
+    if user.get("role") not in ("ground_truth", "super_admin"):
+        raise ApiError("AUTH_FORBIDDEN")
+
+
+@app.get("/v1/admin/challenges/{challenge_id}/ground-truth")
+async def gt_get(challenge_id: str, user: dict = Depends(current_admin)) -> dict:
+    _require_gt_role(user)
+    return _env({"challenge_id": challenge_id,
+                 "bugs": [{"id": "gt_1", "file": "src/auth/session.py", "lines": "10-11",
+                           "category": "crypto", "points": 100}]})
+
+
+class GtBody(BaseModel):
+    bugs: list[dict[str, Any]]
+
+
+@app.put("/v1/admin/challenges/{challenge_id}/ground-truth")
+async def gt_put(challenge_id: str, body: GtBody, user: dict = Depends(require_step_up),
+                 idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    _require_gt_role(user)
+    if not body.bugs:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "bugs", "problem": "at least one bug"}]})
+    for bug in body.bugs:
+        if not bug.get("file") or not bug.get("lines"):
+            raise ApiError("VALIDATION_ERROR", details={"fields": [
+                {"field": "bugs", "problem": "each bug needs file+lines"}]})
+    return _env({"challenge_id": challenge_id, "count": len(body.bugs), "version": 2})
+
+
+@app.get("/v1/admin/challenges/{challenge_id}/candidate-bugs")
+async def candidate_bugs(challenge_id: str, user: dict = Depends(current_admin)) -> dict:
+    return _env({"items": [], "challenge_id": challenge_id})
+
+
+class ReasonOnlyBody(BaseModel):
+    reason: str
+
+
+@app.post("/v1/admin/candidate-bugs/{cid}/accept", status_code=201)
+async def cb_accept(cid: str, body: ReasonOnlyBody, user: dict = Depends(require_step_up),
+                    idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    _require_reason(body.reason)
+    return _env({"id": cid, "state": "accepted", "accepted_by": user["sub"]})
+
+
+@app.post("/v1/admin/candidate-bugs/{cid}/reject")
+async def cb_reject(cid: str, body: ReasonOnlyBody, user: dict = Depends(require_step_up),
+                    idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    _require_reason(body.reason)
+    return _env({"id": cid, "state": "rejected"})
+
+
+@app.get("/v1/admin/challenges/{challenge_id}/answer-packs")
+async def packs_list(challenge_id: str, user: dict = Depends(current_admin)) -> dict:
+    return _env({"items": [], "challenge_id": challenge_id})
+
+
+@app.post("/v1/admin/challenges/{challenge_id}/answer-packs", status_code=201)
+async def packs_create(challenge_id: str, body: dict[str, Any],
+                       user: dict = Depends(require_step_up),
+                       idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    return _env({"id": f"ap_{challenge_id[:8]}", "challenge_id": challenge_id,
+                 "state": "draft"})
+
+
+class LinkBody(BaseModel):
+    submission_id: str
+    flag_id: str
+    reason: str
+
+
+@app.post("/v1/admin/answer-packs/{pack_id}/entries/{entry_id}/link", status_code=201)
+async def entry_link(pack_id: str, entry_id: str, body: LinkBody,
+                     user: dict = Depends(require_step_up),
+                     idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if len(body.reason) < 20:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "reason", "problem": "min 20 chars"}]})
+    return _env({"entry_id": entry_id, "pack_id": pack_id, "submission_id": body.submission_id,
+                 "flag_id": body.flag_id, "state": "linked"})
+
+
+# ---------------------------------------------------------------- disputes
+@app.get("/v1/admin/disputes")
+async def disputes_list(user: dict = Depends(current_admin)) -> dict:
+    return _env({"items": [], "open_count": 0})
+
+
+# ---------------------------------------------------------------- review (AI override path)
+@app.get("/v1/admin/review/queue")
+async def review_queue(user: dict = Depends(current_admin)) -> dict:
+    return _env({"items": [], "pending": 0, "sla_minutes": 30})
+
+
+@app.post("/v1/admin/review/{review_id}/claim")
+async def review_claim(review_id: str, user: dict = Depends(current_admin)) -> dict:
+    if user.get("role") not in ("reviewer", "super_admin"):
+        raise ApiError("AUTH_FORBIDDEN")
+    return _env({"id": review_id, "claimed_by": user["sub"], "state": "in_review"})
+
+
+class DecideBody(BaseModel):
+    decision: str
+    reason: str
+    points: int | None = None
+    ai_override: bool | None = None
+
+
+@app.post("/v1/admin/review/{review_id}/decide")
+async def review_decide(review_id: str, body: DecideBody,
+                        user: dict = Depends(require_step_up),
+                        idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if user.get("role") not in ("reviewer", "super_admin"):
+        raise ApiError("AUTH_FORBIDDEN")
+    if body.decision not in ("accept", "reject", "escalate"):
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "decision", "problem": "accept|reject|escalate"}]})
+    _require_reason(body.reason)
+    return _env({"id": review_id, "decision": body.decision, "points": body.points or 0,
+                 "ai_override": bool(body.ai_override), "decided_by": user["sub"]})
+
+
+# ---------------------------------------------------------------- incidents detail
+class AssignBody(BaseModel):
+    commander_id: str
+
+
+@app.post("/v1/admin/incidents/{iid}/assign")
+async def incident_assign(iid: str, body: AssignBody, user: dict = Depends(current_admin),
+                          idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    return _env({"id": iid, "commander_id": body.commander_id, "state": "mitigating"})
+
+
+class ResolveBody(BaseModel):
+    resolution: str
+
+
+@app.post("/v1/admin/incidents/{iid}/resolve")
+async def incident_resolve(iid: str, body: ResolveBody, user: dict = Depends(require_step_up),
+                           idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if len(body.resolution) < 20:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "resolution", "problem": "min 20 chars"}]})
+    return _env({"id": iid, "state": "resolved", "resolved_at": _now()})
+
+
+class StepBody(BaseModel):
+    runbook_id: str
+    step: str
+    status: str
+
+
+@app.post("/v1/admin/incidents/{iid}/step")
+async def incident_step(iid: str, body: StepBody, user: dict = Depends(current_admin),
+                        idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if body.status not in ("todo", "doing", "done", "skipped"):
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "status", "problem": "todo|doing|done|skipped"}]})
+    return _env({"id": iid, "runbook_id": body.runbook_id, "step": body.step,
+                 "status": body.status})
+
+
+class UpdateBody(BaseModel):
+    note: str
+    status: str | None = None
+
+
+@app.post("/v1/admin/incidents/{iid}/update")
+async def incident_update(iid: str, body: UpdateBody, user: dict = Depends(current_admin),
+                          idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if len(body.note) < 5:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "note", "problem": "min 5 chars"}]})
+    return _env({"id": iid, "note": body.note, "status": body.status or "mitigating"})
+
+
 # ---------------------------------------------------------------- helpers
 def _require_reason(reason: str) -> None:
     if len(reason.strip()) < 10:

@@ -12,11 +12,12 @@ import runner.gateway as runner_mod
 from auth import tokens as auth_tokens
 from core.config import get_settings
 from core.errors import ApiError
+from core.health import register_health_endpoints
 from core.middleware import RequestContextMiddleware
 from db.session import tx
 
 # payload_hash reserved for idempotency body hashing on the DB path
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, Header, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from submissions.pipeline import submit_stage
@@ -24,6 +25,7 @@ from submissions.pipeline import submit_stage
 settings = get_settings()
 app = FastAPI(title="Bug Hunt CTF — Participant API", version="1.0.0", docs_url=None, redoc_url=None)
 app.add_middleware(RequestContextMiddleware, body_limit_bytes=settings.body_limit_bytes)
+register_health_endpoints(app)  # /healthz + /readyz + /metrics (RB-01)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allow_origins,   # exact allow-list (NET-05)
@@ -78,24 +80,6 @@ async def server_time() -> dict:
 async def client_config() -> dict:
     return _env({"client_version": "1.0.0", "min_client_version": "0.1.0",
                  "feature_flags": {"runner": settings.runner_mode != "off", "ai": settings.ai_kind != "off"}})
-
-
-@app.get("/healthz")
-async def healthz() -> dict:
-    return {"status": "ok"}
-
-
-@app.get("/readyz")
-async def readyz() -> dict:
-    problems = []
-    try:
-        async with tx() as conn:
-            conn.execute(__import__("sqlalchemy").text("SELECT 1"))
-    except Exception:  # noqa: BLE001
-        problems.append("db_unreachable")
-    if problems:
-        raise HTTPException(status_code=503, detail={"problems": problems})
-    return {"status": "ready"}
 
 
 # ---------------------------------------------------------------- auth routes
@@ -270,6 +254,279 @@ async def validate_upload(upload_id: str, user: dict = Depends(current_user),
 @app.get("/v1/uploads/{upload_id}")
 async def upload_status(upload_id: str, user: dict = Depends(current_user)) -> dict:
     return _env({"id": upload_id, "status": "ok"})
+
+
+@app.delete("/v1/uploads/{upload_id}")
+async def delete_upload(upload_id: str, user: dict = Depends(current_user)) -> dict:
+    # owner check on the DB path (IDOR matrix); stub mode is single-tenant
+    return _env({"id": upload_id, "deleted": True})
+
+
+# ---------------------------------------------------------------- auth lifecycle
+@app.post("/v1/auth/refresh")
+async def refresh() -> dict:
+    # deterministic stub: no session store without DB → session expired (fail closed).
+    # DB path: rotate app.sessions refresh token with supersession (D-19).
+    raise ApiError("AUTH_SESSION_EXPIRED")
+
+
+class ActivateBody(BaseModel):
+    token: str
+    password: str
+
+
+@app.post("/v1/auth/activate")
+async def activate(body: ActivateBody,
+                   idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if len(body.password) < 12:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "password", "problem": "minLength 12"}]})
+    # DB path: app.activation_tokens lookup; stub mode has no pending invitations.
+    raise ApiError("NOT_FOUND")
+
+
+class ResetRequestBody(BaseModel):
+    email: str
+
+
+@app.post("/v1/auth/reset/request")
+async def reset_request(body: ResetRequestBody,
+                        idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    # never reveal whether the address exists (no user enumeration)
+    return _env({"accepted": True})
+
+
+class ResetConfirmBody(BaseModel):
+    token: str
+    password: str
+
+
+@app.post("/v1/auth/reset/confirm")
+async def reset_confirm(body: ResetConfirmBody,
+                        idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if len(body.password) < 12:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "password", "problem": "minLength 12"}]})
+    raise ApiError("NOT_FOUND")
+
+
+# ---------------------------------------------------------------- consent
+@app.get("/v1/consent")
+async def get_consent(user: dict = Depends(current_user)) -> dict:
+    return _env({"required": False, "versions": {"rules": "2026-11-01", "privacy": "2026-11-01"},
+                 "accepted": True})
+
+
+@app.post("/v1/consent")
+async def post_consent(body: dict[str, Any], user: dict = Depends(current_user),
+                       idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if not isinstance(body.get("versions"), dict) or not body["versions"]:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "versions", "problem": "object required"}]})
+    return _env({"accepted": True, "versions": body["versions"]})
+
+
+# ---------------------------------------------------------------- content
+@app.get("/v1/content/event-details")
+async def event_details() -> dict:
+    # public static content; served from content/ (publish flow writes it)
+    return _env({"sections": [
+        {"id": "format", "title": "Format",
+         "body": "4 levels — read (L1), flag bugs (L2), fix + hidden tests (L3), tests + docs (L4)."},
+        {"id": "schedule", "title": "Schedule",
+         "body": "Published on the lobby page; all times in IST (Asia/Kolkata)."},
+        {"id": "teams", "title": "Teams",
+         "body": "Team size 2 (one lead); repo choice is a one-time team decision."},
+    ]})
+
+
+# ---------------------------------------------------------------- announcements
+@app.get("/v1/announcements")
+async def announcements(cursor: str | None = None, user: dict = Depends(current_user)) -> dict:
+    # DB path: app.announcements keyed by announcement_version; stub: none pending
+    return _env({"items": [], "next_cursor": None})
+
+
+# ---------------------------------------------------------------- leaderboard
+@app.get("/v1/leaderboard")
+async def leaderboard(since: int | None = None, user: dict = Depends(current_user)) -> Any:
+    versions = _versions_for(user["sub"])
+    current = versions["leaderboard_version"]
+    if since is not None and since == current:
+        return Response(status_code=304)
+    # DB path: latest app.leaderboard_snapshots row for the event (JOB-08 debounced).
+    return _env({"version": current, "frozen": False, "mode": "live",
+                 "entries": [], "updated_at": _now()})
+
+
+# ---------------------------------------------------------------- receipts / results
+@app.get("/v1/receipts/{receipt_id}")
+async def receipt(receipt_id: str, user: dict = Depends(current_user)) -> dict:
+    return _env({"id": receipt_id, "status": "received", "submitted_at": _now(),
+                 "stage_key": "level_2_flags", "replay": False})
+
+
+@app.get("/v1/results")
+async def results(user: dict = Depends(current_user)) -> dict:
+    # final results exist only after admin finalize; stub event is live → 404
+    raise ApiError("NOT_FOUND")
+
+
+# ---------------------------------------------------------------- disputes
+@app.post("/v1/disputes", status_code=202)
+async def file_dispute(body: dict[str, Any], user: dict = Depends(current_user),
+                       idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    subject_type = body.get("subject_type")
+    if subject_type not in ("award_unit", "deduction", "receipt"):
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "subject_type", "problem": "award_unit|deduction|receipt"}]})
+    if not isinstance(body.get("subject_id"), str) or not body["subject_id"]:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "subject_id", "problem": "string required"}]})
+    if not isinstance(body.get("statement"), str) or len(body["statement"]) < 20:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "statement", "problem": "min 20 chars"}]})
+    return _env({"dispute_id": "00000000-0000-0000-0000-000000000010",
+                 "status": "open", "filed_at": _now()})
+
+
+@app.get("/v1/disputes")
+async def list_disputes(cursor: str | None = None, user: dict = Depends(current_user)) -> dict:
+    return _env({"items": [], "next_cursor": None})
+
+
+# ---------------------------------------------------------------- team
+@app.get("/v1/team")
+async def team(user: dict = Depends(current_user)) -> dict:
+    # DB path: app.teams join members; stub participant has no team yet → 404
+    raise ApiError("NOT_FOUND")
+
+
+@app.get("/v1/team/score")
+async def team_score(user: dict = Depends(current_user)) -> dict:
+    versions = _versions_for(user["sub"])
+    return _env({"score": 0, "score_version": versions["score_version"],
+                 "breakdown": []})
+
+
+@app.get("/v1/team/repo-lock")
+async def repo_lock_get(user: dict = Depends(current_user)) -> dict:
+    return _env({"locked": False, "option": None, "locked_at": None})
+
+
+@app.post("/v1/team/repo-lock")
+async def repo_lock_set(body: dict[str, Any], user: dict = Depends(current_user),
+                        idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if body.get("confirm") is not True:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "confirm", "problem": "must be true"}]})
+    option = body.get("option")
+    if option not in ("option_a", "option_b"):
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "option", "problem": "unknown repo option"}]})
+    # team-lead-only on the DB path (AUTH_FORBIDDEN); already-locked → REPO_ALREADY_LOCKED
+    return _env({"locked": True, "option": option, "locked_at": _now()})
+
+
+# ---------------------------------------------------------------- stage gate + drafts
+@app.get("/v1/stages/{stage_key}/gate")
+async def stage_gate(stage_key: str, user: dict = Depends(current_user)) -> dict:
+    if not stage_key.startswith("level_"):
+        raise ApiError("NOT_FOUND")
+    return _env({"stage_key": stage_key, "allowed": True, "waiting_on": []})
+
+
+@app.get("/v1/drafts/{stage_key}")
+async def get_draft(stage_key: str, user: dict = Depends(current_user)) -> dict:
+    return _env({"stage_key": stage_key, "version": 1, "payload": {},
+                 "server_saved_at": _now()})
+
+
+# ---------------------------------------------------------------- runs: cancel
+@app.post("/v1/runs/{run_id}/cancel", status_code=202)
+async def cancel_run(run_id: str, user: dict = Depends(current_user),
+                     idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    if runner_gateway.get_result(run_id) is None and not run_id.startswith("run_"):
+        raise ApiError("NOT_FOUND")
+    runner_gateway.cancel(run_id)
+    return _env({"id": run_id, "state": "cancelling"})
+
+
+# ---------------------------------------------------------------- repo browser (WS-02/03)
+_REPO_FILES: dict[str, str] = {
+    "src/auth/session.py": (
+        "import hmac\n\n"
+        "def verify_session(provided: str, expected: str) -> bool:\n"
+        "    # BUG (planted): non-constant-time compare leaks the expected token\n"
+        "    return provided == expected\n"
+    ),
+    "src/checkout/total.py": (
+        "def total(items):\n"
+        "    # BUG (planted): float cents math loses precision\n"
+        "    return sum(i.price for i in items) * 100\n"
+    ),
+    "src/README.md": "# Challenge repo (option_a) — Web checkout service (Python)\n",
+}
+
+
+@app.get("/v1/repo/tree")
+async def repo_tree(user: dict = Depends(current_user)) -> dict:
+    # DB path: challenge version pinned to the team's repo_choice
+    return _env({"files": sorted(_REPO_FILES), "version": 1})
+
+
+@app.get("/v1/repo/files/{file_path:path}")
+async def repo_file(file_path: str, user: dict = Depends(current_user)) -> dict:
+    content = _REPO_FILES.get(file_path)
+    if content is None:
+        raise ApiError("NOT_FOUND")
+    return _env({"path": file_path, "content": content, "size": len(content)})
+
+
+@app.get("/v1/repo/search")
+async def repo_search(q: str, cursor: str | None = None,
+                      user: dict = Depends(current_user)) -> dict:
+    if not q or len(q) < 2:
+        raise ApiError("VALIDATION_ERROR", details={"fields": [
+            {"field": "q", "problem": "min 2 chars"}]})
+    hits = [{"path": p, "line": 1, "snippet": line.strip()}
+            for p, c in sorted(_REPO_FILES.items())
+            for line in c.splitlines() if q.lower() in line.lower()]
+    return _env({"hits": hits[:20], "next_cursor": None})
+
+
+# ---------------------------------------------------------------- practice (R-02)
+@app.get("/v1/practice/state")
+async def practice_state(user: dict = Depends(current_user)) -> dict:
+    return _env({"enabled": True, "remaining_runs": 10, "cooldown_s": 60,
+                 "commands": ["build", "test", "lint"]})
+
+
+@app.get("/v1/practice/files/{file_path:path}")
+async def practice_file(file_path: str, user: dict = Depends(current_user)) -> dict:
+    content = _REPO_FILES.get(file_path)
+    if content is None:
+        raise ApiError("NOT_FOUND")
+    return _env({"path": file_path, "content": content})
+
+
+class PracticeRunBody(BaseModel):
+    language: str
+    files: dict[str, Any]
+    entrypoint: str | None = None
+
+
+@app.post("/v1/practice/runs", status_code=202)
+async def practice_run(body: PracticeRunBody, user: dict = Depends(current_user),
+                       idempotency_key: str = Header(alias="Idempotency-Key")) -> dict:
+    # practice runs execute ONLY runner-side on the practice image; hidden inputs are
+    # unreachable by construction (separate volume, no gt mount) — R-02/DV-02.
+    job_id = runner_gateway.submit(
+        participant_id=user["sub"], team_id=None, kind="run_practice",
+        command_argv=["/usr/bin/practice"],
+        image_digest="sha256:stub-practice-3.12",
+    )
+    return _env({"id": job_id, "state": "queued"})
 
 
 # ---------------------------------------------------------------- helpers

@@ -80,6 +80,8 @@ class RunnerGateway:
         self._running: dict[str, dict[str, Any]] = {}      # participant_id -> job
         self._in_flight: set[str] = set()                   # queued OR running participants
         self._results: dict[str, dict[str, Any]] = {}
+        self._cancelled: set[str] = set()             # job_ids cancelled via the API
+        self._known: set[str] = set()                 # every job_id ever submitted
         self._last_team: str | None = None
         self._kill_switch_at: float | None = None
 
@@ -97,6 +99,7 @@ class RunnerGateway:
         if participant_id in self._in_flight:
             raise ApiError("RUN_RATE_LIMITED", details={"estimated_wait": "one concurrent run per participant"})
         job_id = str(uuid.uuid4())
+        self._known.add(job_id)
         self._in_flight.add(participant_id)
         self._queue.append({
             "spec": JobSpec(job_id=job_id, kind=kind, image_digest=image_digest, argv=command_argv,
@@ -133,7 +136,15 @@ class RunnerGateway:
         self._in_flight.discard(participant_id)
 
     def heartbeat(self, *, job_id: str, state: str) -> dict[str, Any]:
-        return {"cancel": not self.runner_enabled}
+        # pull protocol: the runner learns about cancellation on its next heartbeat
+        return {"cancel": not self.runner_enabled or job_id in self._cancelled}
+
+    def cancel(self, job_id: str) -> None:
+        """Best-effort cancel: mark the job; the runner stops on its next heartbeat."""
+        self._cancelled.add(job_id)
+        for pid, job in list(self._running.items()):
+            if job["spec"]["job_id"] == job_id:
+                self._release(pid)
 
     def result(self, *, job_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         validated = validate_job_result(payload)
@@ -144,4 +155,10 @@ class RunnerGateway:
         return validated
 
     def get_result(self, job_id: str) -> dict[str, Any] | None:
-        return self._results.get(job_id)
+        if job_id in self._results:
+            return self._results[job_id]
+        if job_id in self._cancelled:
+            return {"state": "cancelling", "exit_code": None, "stdout": "", "stderr": ""}
+        if job_id in self._known:
+            return {"state": "queued", "exit_code": None, "stdout": "", "stderr": ""}
+        return None
