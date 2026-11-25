@@ -79,7 +79,8 @@ for (const [path, item] of Object.entries(spec.paths)) {
   }
 }
 
-const clientFns = ops
+function renderClientFns(opList) {
+  return opList
   .map(({ fn, method, path, op, bodySchema, params }) => {
     const args = [];
     for (const p of params) args.push(`${p.name}: ${p.ts}`);
@@ -109,8 +110,10 @@ const clientFns = ops
   }`;
   })
   .join("\n\n");
+}
 
-const out = `// GENERATED from openapi/openapi.json — do not edit by hand.
+function renderClientSource(fns, className, headerNote) {
+  return `// GENERATED from openapi/openapi.json — ${headerNote}
 // Regenerate: pnpm --filter api-client gen
 export interface RequestOpts {
   fetchImpl?: typeof fetch;
@@ -121,7 +124,7 @@ export interface RequestOpts {
 
 ${schemaOut}
 
-export class ApiClient {
+export class ${className} {
   private base: string;
   private fetchImpl: typeof fetch;
   private token?: string;
@@ -160,7 +163,7 @@ export class ApiClient {
     return json;
   }
 
-${clientFns}
+${fns}
 }
 
 export class ApiError extends Error {
@@ -173,12 +176,24 @@ export class ApiError extends Error {
   }
 }
 `;
+}
+
+const out = renderClientSource(renderClientFns(ops), "ApiClient", "do not edit by hand.");
 
 const outDir = join(root, "frontend", "packages", "api-client", "src", "generated");
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, "client.ts"), out);
+
+// ---- participant-scoped client (bundle-check gate: no admin/runner ops in the
+// participant bundle, R-34) --------------------------------------------------
+const participantOps = ops.filter(({ path }) =>
+  !path.startsWith("/v1/admin") && !path.startsWith("/runner/") && path !== "/metrics");
+const participantOut = renderClientSource(renderClientFns(participantOps), "ParticipantClient",
+  "PARTICIPANT-SCOPED (no admin/runner ops).");
+writeFileSync(join(outDir, "participant.ts"), participantOut);
+
 writeFileSync(
   join(outDir, "index.ts"),
-  `export * from "./client.js";\n`,
+  `export * from "./client.js";\nexport { ParticipantClient } from "./participant.js";\n`,
 );
-console.log(`generated ${ops.length} operations into src/generated/client.ts`);
+console.log(`generated ${ops.length} operations (client.ts) + ${participantOps.length} participant ops (participant.ts)`);

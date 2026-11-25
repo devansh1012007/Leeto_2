@@ -92,8 +92,30 @@ class LoginBody(BaseModel):
 async def login(body: LoginBody, request: Request, response: Response) -> dict:
     ip = request.client.host if request.client else "unknown"
     login_limiter.check(identifier=body.identifier, ip=ip)
-    login_limiter.record_failure(body.identifier)   # deterministic stub auth: always one failure path shape
-    raise ApiError("AUTH_INVALID_CREDENTIALS")
+    # DB path: app.users lookup by (tenant, email|username) + argon2id verify + session row.
+    # Uniform 401 for unknown identifier AND wrong password (no user enumeration, B7).
+    try:
+        async with tx() as conn:
+            row = (await conn.execute(__import__("sqlalchemy").text(
+                "SELECT id, password_hash, role, disabled_at, disqualified_at "
+                "FROM app.users WHERE email = :i OR username = :i LIMIT 1"),
+                {"i": body.identifier})).first()
+    except ApiError:
+        raise
+    except Exception:  # noqa: BLE001 — DB unreachable: fail closed, truthful 503
+        raise ApiError("UPSTREAM_UNAVAILABLE") from None
+    if row is None or row.disabled_at or row.disqualified_at or not auth_tokens.verify_password(
+            row.password_hash, body.password):
+        login_limiter.record_failure(body.identifier)
+        raise ApiError("AUTH_INVALID_CREDENTIALS")
+    login_limiter.record_success(body.identifier)
+    access = auth_tokens.make_access_token(secret=settings.jwt_secret or "dev-secret",
+                                           sub=str(row.id), sid=f"sess_{row.id}", role=row.role)
+    # refresh token via __Secure- cookie (contract: /v1/auth/login 200)
+    refresh, _ = auth_tokens.new_refresh_token()
+    response.set_cookie("__Secure-refresh", refresh, httponly=True, samesite="strict",
+                        secure=True, path="/v1/auth")
+    return _env({"access_token": access, "expires_at": _now()})
 
 
 @app.post("/v1/auth/logout")

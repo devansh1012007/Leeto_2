@@ -1,6 +1,10 @@
 /** Live ops console (07 §3.1): 2 s ticker, health strip, stage table, error stream,
- * stale badge > 10 s, degraded state after failures. Aggregates only (T-4.7). */
+ * stale badge > 10 s, degraded state after failures. Aggregates only (T-4.7).
+ * Polls GET /v1/admin/events/{id}/live; falls back to the fixture when the API is
+ * unreachable (offline demo mode). */
 import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { useAdminApi } from "../lib/api";
 
 export interface LiveAggregate {
   t_plus_s: number;
@@ -28,17 +32,30 @@ const FIXTURE: LiveAggregate = {
 };
 
 export function LiveConsole(): React.JSX.Element {
+  const api = useAdminApi();
+  const params = useParams();
+  const eventId = params.id || "ev1";
   const [data, setData] = useState<LiveAggregate>(FIXTURE);
   const [lastRefreshMs, setLastRefreshMs] = useState(Date.now());
   const [degraded, setDegraded] = useState(false);
 
   useEffect(() => {
-    // 2 s ticker (T-6.11); UI shows last-refresh time and manual refresh
-    const timer = window.setInterval(() => {
-      setLastRefreshMs(Date.now());
-    }, 2000);
-    return () => window.clearInterval(timer);
-  }, []);
+    let cancelled = false;
+    const refresh = () => {
+      api.get_v1_admin_events__id__live(eventId)
+        .then((res) => {
+          if (cancelled) return;
+          const live = (res as { data?: LiveAggregate }).data;
+          if (live) setData(live);
+          setDegraded(false);
+          setLastRefreshMs(Date.now());
+        })
+        .catch(() => { if (!cancelled) setDegraded(true); });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 2000); // 2 s ticker (T-6.11)
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [api, eventId]);
 
   const staleS = Math.floor((Date.now() - lastRefreshMs) / 1000);
   const stale = staleS > 10;
