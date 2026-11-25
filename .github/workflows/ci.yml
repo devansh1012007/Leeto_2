@@ -1,0 +1,115 @@
+name: ci
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install ruff
+      - run: ruff check backend runner seeds tools tests
+      - name: no-423 check (R-06)
+        run: "! grep -rn '423' openapi/ || (echo '423 forbidden in openapi' && exit 1)"
+      - name: openapi lint (vendored)
+        run: python3 tools/openapi_lint.py
+      - name: error usage check
+        run: python3 tools/error_usage_check.py
+      - name: skill lint
+        run: python3 tools/skill_lint.py
+
+  unit:
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: test, POSTGRES_DB: bhctf_test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PG_HOST: localhost
+      PG_PORT: "5432"
+      PG_DB: bhctf_test
+      PG_USER: postgres
+      PG_PASSWORD: test
+      ENV: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: cd backend && pip install -e ".[dev]"
+      - run: pytest tests/unit -q
+      - run: pytest tests/integration -q
+      - name: role isolation (GT unreadable by app_api)
+        run: pytest tests/security/test_role_isolation.py -q
+      - name: boundaries
+        run: pytest tests -m boundaries -q
+
+  contract:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: cd backend && pip install -e ".[dev]"
+      - run: pytest tests/contract -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: npm install -g pnpm@9 && pnpm install --frozen-lockfile=false
+        working-directory: frontend
+      - run: pnpm --filter api-client build -s
+        working-directory: frontend
+      - run: pnpm --filter participant build -s
+        working-directory: frontend
+      - run: pnpm --filter admin build -s
+        working-directory: frontend
+      - name: bundle-check (no admin strings / secrets in participant build)
+        run: python3 ../tools/bundle_check.py apps/participant/dist
+        working-directory: frontend
+
+  security:
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: cd backend && pip install -e ".[dev]"
+      - run: pytest tests/security -q --ignore=tests/security/runner_escape
+      - run: pytest tests/security/runner_escape -q
+
+  cold-start:
+    runs-on: ubuntu-latest
+    needs: [contract, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: npm install -g pnpm@9 && pnpm install --frozen-lockfile=false
+        working-directory: frontend
+      - run: rm -rf packages/api-client/src/generated && pnpm --filter api-client gen -s && pnpm --filter api-client build -s && pnpm --filter participant build -s
+        working-directory: frontend
+
+  load-smoke:
+    runs-on: ubuntu-latest
+    needs: unit
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install httpx
+      - run: python3 tests/load/smoke.py --target http://localhost:8000 --rate 100 --duration 10 || echo "load-smoke requires live stack; see docs/CAPACITY.md"
