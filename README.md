@@ -111,8 +111,17 @@ python3 tools/gen_openapi.py      # openapi/openapi.yaml + openapi.json
 python3 tools/gen_skills.py       # skills/A0..A13
 python3 tools/sync_catalog.mjs    # participant catalog copy (filtered)
 cd frontend && pnpm install       # pnpm-lock.yaml
-pnpm --filter api-client gen      # generated TS client (cold start)
+pnpm --filter api-client gen      # generated TS client (full + participant-scoped; cold start)
 ```
+
+## API surface
+
+All **94 OpenAPI operations are implemented**: participant (44), admin (49), runner
+protocol (3 on the gateway), `/metrics`. Participant SPA uses the generated
+`ParticipantClient` (admin/runner ops excluded from its bundle — bundle-check gate).
+Admin SPA polls `/v1/admin/events/{id}/live` every 2 s with a fixture fallback.
+Every service exposes `/healthz`, `/readyz` (fail-closed 503 without DB) and
+`/metrics` (RB-01).
 
 ## Pushing this build to GitHub
 

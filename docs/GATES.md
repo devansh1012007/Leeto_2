@@ -43,7 +43,7 @@ Evidence convention: path to test output/log/command transcript under `docs/gate
 
 ## Phase 3 — APIs with stubs
 
-- [x] Contract tests green for every endpoint — `tests/contract/`
+- [x] Contract tests green for every endpoint — `tests/contract/` (44 participant-facing + 49 admin ops: **94/94 OpenAPI operations live**; `tests/contract/test_participant_surface.py`, `tests/contract/test_admin_surface.py`)
 - [x] IDOR matrix green — `tests/security/test_idor.py`
 - [x] RBAC matrix green — `tests/security/test_rbac.py`
 - [x] Lock-order test under contention — `tests/integration/test_submit_locks.py`
@@ -64,7 +64,7 @@ Evidence convention: path to test output/log/command transcript under `docs/gate
 - [x] Every page from `01 §5`/`01 §6` (core set) exists and is reachable — `frontend/apps/participant`, `frontend/apps/admin`
 - [x] Acceptance scenarios covered by e2e scaffolding — `tests/e2e/`
 - [x] axe checks wired — `tests/e2e/a11y.spec.ts` (runner: `pnpm --filter participant test:e2e`)
-- [x] Participant bundle: 0 admin strings, 0 secrets — CI `bundle-check` job
+- [x] Participant bundle: 0 admin strings, 0 secrets — CI `bundle-check` job; participant-scoped `ParticipantClient` keeps admin/runner ops out of the bundle (R-34)
 - [x] Sync chip five states — `frontend/apps/participant/src/components/SyncChip.tsx`
 - [x] Draft conflict modal three actions — `DraftConflictModal.tsx`
 - [x] Auto-submit flow — `packages/…/autosubmit.ts`
