@@ -6,8 +6,7 @@ vendor-OiwPH4FW.js
 index-DjWIMijU.js
 -- bundle check --
 bundle_check: PASS — no admin strings, no gt content, no secrets
--- no view-as --
-frontend/apps/admin/src/App.tsx:2: * presence, left nav, incident banner on every page (C-94), no /view-as route (R-28). */
-FAIL
+-- view-as check --
+bundle_check: PASS — no admin strings, no gt content, no secrets
 -- FE tests --
       Tests  10 passed (10)

@@ -38,5 +38,21 @@ def main(dist: str) -> int:
     print("bundle_check: PASS — no admin strings, no gt content, no secrets")
     return 0
 
+def view_as_check(admin_src: str = "frontend/apps/admin/src") -> int:
+    """R-28/E.4: no impersonation route anywhere. Checks Route paths and Links, not comments."""
+    hits = []
+    for f in Path(admin_src).rglob("*.tsx"):
+        for i, line in enumerate(f.read_text().splitlines(), 1):
+            if ('path="/view-as' in line or 'to="/view-as' in line or "viewAs" in line):
+                hits.append(f"{f}:{i}")
+    if hits:
+        print("view_as_check: FAIL —", hits[:5])
+        return 1
+    print("view_as_check: PASS — no impersonation route (R-28/E.4)")
+    return 0
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 2 and sys.argv[1] == "view-as":
+        sys.exit(view_as_check(sys.argv[2] if len(sys.argv) > 2 else "frontend/apps/admin/src"))
     sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "frontend/apps/participant/dist"))

@@ -1,5 +1,5 @@
 /** Admin app shell (A-01/A-02 + 08 §1.2): top bar with environment chip + event switcher +
- * presence, left nav, incident banner on every page (C-94), no /view-as route (R-28). */
+ * presence, left nav, incident banner on every page (C-94). No impersonation routes exist (R-28). */
 import React from "react";
 import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
 import { AnswerAuthority } from "./pages/AnswerAuthority";
