@@ -102,6 +102,18 @@ Participant count is a parameter. **N=50 is the default.** N=100/200 are qualifi
 targets only; no doc/comment/log may state a size that has not passed the load profile
 in `docs/CAPACITY.md`.
 
+## Regenerating derived artifacts
+
+Committed sources generate everything else:
+
+```bash
+python3 tools/gen_openapi.py      # openapi/openapi.yaml + openapi.json
+python3 tools/gen_skills.py       # skills/A0..A13
+python3 tools/sync_catalog.mjs    # participant catalog copy (filtered)
+cd frontend && pnpm install       # pnpm-lock.yaml
+pnpm --filter api-client gen      # generated TS client (cold start)
+```
+
 ## Pushing this build to GitHub
 
 This repository was built locally (the upstream was not cloneable from the build

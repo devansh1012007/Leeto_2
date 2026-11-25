@@ -11,7 +11,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install ruff
+      - run: pip install ruff pyyaml
+      - name: regenerate derived artifacts (openapi, skills) from committed sources
+        run: |
+          python3 tools/gen_openapi.py
+          python3 tools/gen_skills.py
       - run: ruff check backend runner seeds tools tests
       - name: no-423-responses check (R-06)
         run: "! grep -rn "'423':" openapi/ || (echo '423 response forbidden in openapi' && exit 1)"
