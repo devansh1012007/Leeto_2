@@ -1,0 +1,47 @@
+/* Design tokens (01 §1.2): dark default; 4px grid; WCAG AA pairs. */
+:root {
+  --bg: #0d1117; --surface: #161b22; --surface-raised: #21262d; --border: #30363d;
+  --text: #e6edf3; --text-muted: #8b949e; --accent: #4da8da; --accent-contrast: #04121d;
+  --success: #3fb950; --warning: #d29922; --danger: #f85149; --info: #58a6ff;
+  --focus-ring: 2px solid var(--accent);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.page { max-width: 960px; margin: 0 auto; padding: 24px; }
+.workspace { display: grid; grid-template-rows: auto auto 1fr; height: 100vh; }
+.hud { display: flex; gap: 16px; align-items: center; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.panes { display: grid; grid-template-columns: 240px 1fr 360px; min-height: 0; }
+.explorer { background: var(--surface); border-right: 1px solid var(--border); overflow: auto; }
+.explorer ul { list-style: none; margin: 0; padding: 8px; }
+.explorer button { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text); padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+.explorer button.active { background: var(--surface-raised); }
+.reported { color: var(--warning); margin-left: 8px; font-size: 11px; }
+.code-area { padding: 12px; overflow: auto; }
+.code { font-family: ui-monospace, monospace; font-size: 14px; background: var(--surface); padding: 12px; border-radius: 6px; min-height: 200px; }
+.report-panel { background: var(--surface); border-left: 1px solid var(--border); padding: 16px; overflow: auto; }
+.report-panel label { display: block; margin: 10px 0 4px; font-size: 13px; color: var(--text-muted); }
+.report-panel input, .report-panel textarea, .report-panel select { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; }
+.field-err { color: var(--danger); font-size: 12px; margin: 4px 0 0; }
+.hint { color: var(--text-muted); font-size: 12px; }
+.chip { border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+.chip.accepted { border-color: var(--success); color: var(--success); }
+.chip.warn { border-color: var(--warning); color: var(--warning); }
+.banner { padding: 8px 16px; font-size: 14px; }
+.banner.warn { background: color-mix(in srgb, var(--warning) 15%, transparent); }
+.banner.critical { background: color-mix(in srgb, var(--danger) 20%, transparent); }
+.banner.info { background: color-mix(in srgb, var(--info) 12%, transparent); }
+.countdown { font-variant-numeric: tabular-nums; font-weight: 600; }
+.countdown.warn { color: var(--warning); }
+.countdown.critical { color: var(--danger); }
+.modal-overlay { position: fixed; inset: 0; background: rgb(0 0 0 / 60%); display: grid; place-items: center; }
+.modal { background: var(--surface-raised); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 480px; }
+.modal .actions { display: flex; gap: 8px; margin-top: 16px; }
+button { font: inherit; }
+button.primary, .button.primary { background: var(--accent); color: var(--accent-contrast); border: 0; border-radius: 6px; padding: 8px 16px; cursor: pointer; text-decoration: none; display: inline-block; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
+.note { color: var(--info); font-size: 13px; }
+.tagline { color: var(--text-muted); }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
