@@ -2,13 +2,16 @@
 # Prod: Cloudflare Tunnel → Caddy; NO published host ports.
 
 app.local:80 {
-	root * /srv/participant
-	encode gzip
-	try_files {path} /index.html
-	file_server
-
-	handle /v1/* {
-		reverse_proxy api_participant:8000
+	route {
+		handle /v1/* {
+			reverse_proxy api_participant:8000
+		}
+		handle {
+			root * /srv/participant
+			encode gzip
+			try_files {path} /index.html
+			file_server
+		}
 	}
 	header {
 		X-Content-Type-Options nosniff
@@ -18,13 +21,16 @@ app.local:80 {
 }
 
 admin.local:80 {
-	root * /srv/admin
-	encode gzip
-	try_files {path} /index.html
-	file_server
-
-	handle /v1/* {
-		reverse_proxy api_admin:8001
+	route {
+		handle /v1/* {
+			reverse_proxy api_admin:8001
+		}
+		handle {
+			root * /srv/admin
+			encode gzip
+			try_files {path} /index.html
+			file_server
+		}
 	}
 	header {
 		X-Content-Type-Options nosniff

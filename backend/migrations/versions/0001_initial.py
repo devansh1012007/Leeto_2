@@ -19,7 +19,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    sql = pathlib.Path(__file__).parents[2].joinpath("schema.sql").read_text()
+    sql = pathlib.Path(__file__).parents[1].joinpath("schema.sql").read_text()
     # strip psql-style backslash commands (none expected) and run as one script
     op.execute(sql)
 

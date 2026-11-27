@@ -11,8 +11,10 @@
 name: bhctf
 
 x-backend-base: &backend-base
+  # Context is the repo root so the image can also read openapi/ and copy/ at runtime.
   build:
-    context: ./backend
+    context: .
+    dockerfile: backend/Dockerfile
     target: runtime
   env_file: .env
   depends_on:

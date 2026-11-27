@@ -16,7 +16,7 @@ export function App(props: { env?: AdminEnv }): React.JSX.Element {
   });
 
   return (
-    <BrowserRouter basename="/admin">
+    <BrowserRouter basename="/">
       {incident && (
         <div className="incident-banner" role="alert">
           Incident {incident.severity}: {incident.summary}

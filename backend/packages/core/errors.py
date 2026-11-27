@@ -6,12 +6,17 @@ runtime and the contract can never drift (R-06/B3).
 from __future__ import annotations
 
 import functools
+import os
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+# In a Docker image the installed packages live in site-packages, so the
+# default walk-up lands in /usr/local/lib. The build sets BHCTF_REPO_ROOT to
+# the image root (where openapi/ and copy/ are copied); in a source checkout
+# the walk-up reaches the repo root.
+REPO_ROOT = Path(os.environ.get("BHCTF_REPO_ROOT") or Path(__file__).resolve().parents[3])
 ERRORS: dict[str, dict] = yaml.safe_load((REPO_ROOT / "openapi" / "errors.yaml").read_text())["codes"]
 
 

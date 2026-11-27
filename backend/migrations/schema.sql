@@ -10,6 +10,9 @@
 --   B4/R-15   idempotency: route column + partial unique + retention semantics
 --   R-02      runner has NO database role at all
 
+-- R-13: citext is used by app.users.email/username etc.; enable before first use.
+CREATE EXTENSION IF NOT EXISTS citext;
+
 -- ============================================================ schemas
 CREATE SCHEMA IF NOT EXISTS app;
 CREATE SCHEMA IF NOT EXISTS gt;
@@ -163,6 +166,7 @@ CREATE TABLE IF NOT EXISTS app.challenges (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,
   event_id uuid NOT NULL REFERENCES app.events(id),
+  repo_option_id uuid REFERENCES app.repo_options(id),
   kind text NOT NULL DEFAULT 'repo' CHECK (kind IN ('repo','bundle')),
   lifecycle text NOT NULL DEFAULT 'draft' CHECK (lifecycle IN ('draft','reviewed','frozen','sealed','published','archived')),
   manifest_hash text,
@@ -866,8 +870,8 @@ BEGIN
     AND b.line_anchors::text <> '[]'
     AND EXISTS (
       SELECT 1
-      FROM jsonb_array_elements(b.line_anchors) AS gt_anchor(cross)
-      JOIN jsonb_array_elements(NEW.line_anchors) AS ap_anchor(cross)
+      FROM jsonb_array_elements(b.line_anchors) AS gt_anchor(elem)
+      JOIN jsonb_array_elements(NEW.line_anchors) AS ap_anchor(elem)
         ON (gt_anchor->>'file' IS NOT DISTINCT FROM ap_anchor->>'file'
             OR NEW.canonical_file = b.canonical_file)
        AND ranges_overlap(gt_anchor->>'lines', ap_anchor->>'lines')
